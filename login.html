@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MADALALI TZ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">MADALALI TZ</a>
+            <ul class="navbar-menu">
+                <li><a href="/index.html">Home</a></li>
+                <li><a href="/client/properties.html">Properties</a></li>
+                <li><a href="/login.html" class="active">Login</a></li>
+                <li><a href="/register.html" class="btn btn-primary btn-sm">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Login Form -->
+    <section style="padding: 4rem 0; min-height: calc(100vh - 200px); display: flex; align-items: center;">
+        <div class="container">
+            <div class="row justify-center">
+                <div class="col" style="max-width: 450px;">
+                    <div class="card">
+                        <div class="card-header text-center">
+                            <h2 class="card-title">Welcome Back</h2>
+                            <p class="text-muted">Login to your MADALALI TZ account</p>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div id="alertContainer"></div>
+                            
+                            <form id="loginForm">
+                                <div class="form-group">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input 
+                                        type="email" 
+                                        id="email" 
+                                        name="email" 
+                                        class="form-control" 
+                                        placeholder="Enter your email"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input 
+                                        type="password" 
+                                        id="password" 
+                                        name="password" 
+                                        class="form-control" 
+                                        placeholder="Enter your password"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <button type="submit" id="loginBtn" class="btn btn-primary w-100">
+                                    Login
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="card-footer text-center">
+                            <p class="text-muted">
+                                Don't have an account? 
+                                <a href="/register.html">Register here</a>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Sample Credentials -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title">Sample Login Credentials</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Admin:</strong> admin@madalali.tz / admin123</p>
+                            <p><strong>Agent:</strong> agent@madalali.tz / agent123</p>
+                            <p><strong>Client:</strong> client@madalali.tz / client123</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Test if JavaScript is working
+        console.log('✅ JavaScript loaded successfully');
+        console.log('✅ app.js loaded, Auth object:', typeof Auth);
+        console.log('✅ Utils object:', typeof Utils);
+        console.log('✅ API object:', typeof API);
+        
+        // Check if already logged in (but don't auto-redirect)
+        const currentUser = Auth.getUser();
+        console.log('Current user:', currentUser);
+        
+        if (currentUser) {
+            console.log('⚠️ User already logged in:', currentUser);
+            Utils.showAlert('You are already logged in. Redirecting...', 'info');
+            setTimeout(() => {
+                Auth.redirectToDashboard(currentUser.user.role);
+            }, 2000);
+        } else {
+            console.log('✅ No user logged in, ready for login');
+        }
+
+        // Handle login form submission
+        const loginForm = document.getElementById('loginForm');
+        console.log('✅ Login form found:', loginForm);
+        
+        if (!loginForm) {
+            console.error('❌ ERROR: Login form not found!');
+            alert('ERROR: Login form not found!');
+        }
+        
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            console.log('🔐 Login form submitted');
+            
+            // Validate form
+            if (!Utils.validateForm('loginForm')) {
+                console.warn('⚠️ Form validation failed');
+                return;
+            }
+            
+            // Get form data
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            console.log('📧 Email:', email);
+            console.log('🔑 Password length:', password.length);
+            
+            // Set loading state
+            Utils.setLoading('loginBtn', true);
+            
+            try {
+                console.log('🚀 Sending login request...');
+                const response = await API.request('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+                
+                console.log('✅ Login response received:', response);
+                
+                if (response && response.success) {
+                    console.log('👤 User:', response.data.user);
+                    console.log('🎯 Role:', response.data.user.role);
+                    
+                    // Save user data to localStorage
+                    Utils.Storage.set('user', response.data);
+                    console.log('💾 User data saved to localStorage');
+                    
+                    // Show success message
+                    Utils.showAlert('Login successful! Redirecting...', 'success');
+                    
+                    // Redirect to appropriate dashboard
+                    const dashboardUrl = response.data.user.role === 'admin' ? '/admin/dashboard.html' : 
+                                       response.data.user.role === 'agent' ? '/agent/dashboard.html' : 
+                                       '/client/dashboard.html';
+                    console.log('🔄 Redirecting to:', dashboardUrl);
+                    
+                    setTimeout(() => {
+                        Auth.redirectToDashboard(response.data.user.role);
+                    }, 1500);
+                } else {
+                    console.error('❌ Login failed: response.success is false');
+                    Utils.Storage.remove('user'); // Clear any previous user data
+                    Utils.showAlert('Login failed. Please check your credentials.', 'danger');
+                    Utils.setLoading('loginBtn', false);
+                }
+            } catch (error) {
+                console.error('❌ Login error caught:', error);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+                
+                // Show error and keep it visible
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger show';
+                alertDiv.style.marginBottom = '1rem';
+                alertDiv.innerHTML = `
+                    <strong>Login Failed!</strong><br>
+                    ${error.message || 'Unable to login. Please try again.'}<br>
+                    <small>Check the console (F12) for more details.</small>
+                `;
+                
+                const alertContainer = document.getElementById('alertContainer');
+                alertContainer.innerHTML = '';
+                alertContainer.appendChild(alertDiv);
+                
+                Utils.setLoading('loginBtn', false);
+                
+                // Don't auto-hide this error
+                console.error('🛑 ERROR DISPLAYED - Check above for details');
+            }
+        });
+
+        // Clear error on input
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('input', () => {
+                input.classList.remove('error');
+                const errorElement = input.nextElementSibling;
+                if (errorElement && errorElement.classList.contains('form-error')) {
+                    errorElement.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
