@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - MADALALI TZ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">MADALALI TZ</a>
+            <ul class="navbar-menu">
+                <li><a href="/index.html">Home</a></li>
+                <li><a href="/client/properties.html">Properties</a></li>
+                <li><a href="/login.html">Login</a></li>
+                <li><a href="/register.html" class="active btn btn-primary btn-sm">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Registration Form -->
+    <section style="padding: 4rem 0; min-height: calc(100vh - 200px);">
+        <div class="container">
+            <div class="row justify-center">
+                <div class="col" style="max-width: 550px;">
+                    <div class="card">
+                        <div class="card-header text-center">
+                            <h2 class="card-title">Create Account</h2>
+                            <p class="text-muted">Join MADALALI TZ today</p>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div id="alertContainer"></div>
+                            
+                            <form id="registerForm">
+                                <div class="form-group">
+                                    <label for="name" class="form-label">Full Name</label>
+                                    <input 
+                                        type="text" 
+                                        id="name" 
+                                        name="name" 
+                                        class="form-control" 
+                                        placeholder="Enter your full name"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input 
+                                        type="email" 
+                                        id="email" 
+                                        name="email" 
+                                        class="form-control" 
+                                        placeholder="Enter your email"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone" class="form-label">Phone Number</label>
+                                    <input 
+                                        type="tel" 
+                                        id="phone" 
+                                        name="phone" 
+                                        class="form-control" 
+                                        placeholder="+255 XXX XXX XXX"
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input 
+                                        type="password" 
+                                        id="password" 
+                                        name="password" 
+                                        class="form-control" 
+                                        placeholder="Minimum 6 characters"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                    <input 
+                                        type="password" 
+                                        id="confirmPassword" 
+                                        name="confirmPassword" 
+                                        class="form-control" 
+                                        placeholder="Re-enter your password"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="role" class="form-label">Register As</label>
+                                    <select id="role" name="role" class="form-control" required>
+                                        <option value="client">Client (Looking for property)</option>
+                                        <option value="agent">Agent (Listing properties)</option>
+                                    </select>
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <button type="submit" id="registerBtn" class="btn btn-primary w-100">
+                                    Create Account
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="card-footer text-center">
+                            <p class="text-muted">
+                                Already have an account? 
+                                <a href="/login.html">Login here</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Prevent access if already logged in
+        Auth.preventAuthAccess();
+
+        // Handle registration form submission
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Validate form
+            if (!Utils.validateForm('registerForm')) {
+                return;
+            }
+            
+            // Get form data
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const role = document.getElementById('role').value;
+            
+            // Check if passwords match
+            if (password !== confirmPassword) {
+                const confirmPasswordInput = document.getElementById('confirmPassword');
+                confirmPasswordInput.classList.add('error');
+                const errorElement = confirmPasswordInput.nextElementSibling;
+                errorElement.textContent = 'Passwords do not match';
+                errorElement.classList.add('show');
+                return;
+            }
+            
+            // Set loading state
+            Utils.setLoading('registerBtn', true);
+            
+            try {
+                const response = await API.request('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, email, phone, password, role })
+                });
+                
+                if (response.success) {
+                    // Save user data to localStorage
+                    Utils.Storage.set('user', response.data);
+                    
+                    // Show success message
+                    Utils.showAlert('Registration successful! Redirecting to dashboard...', 'success');
+                    
+                    // Redirect to appropriate dashboard
+                    setTimeout(() => {
+                        Auth.redirectToDashboard(response.data.user.role);
+                    }, 1500);
+                }
+            } catch (error) {
+                Utils.showAlert(error.message || 'Registration failed. Please try again.', 'danger');
+                Utils.setLoading('registerBtn', false);
+            }
+        });
+
+        // Clear error on input
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('input', () => {
+                input.classList.remove('error');
+                const errorElement = input.nextElementSibling;
+                if (errorElement && errorElement.classList.contains('form-error')) {
+                    errorElement.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
