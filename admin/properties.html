@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Properties - Admin</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <div style="padding: 0 1.5rem; margin-bottom: 2rem;">
+                <h3 style="color: white;">Admin Panel</h3>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="/admin/dashboard.html">📊 Dashboard</a></li>
+                <li><a href="/admin/users.html">👥 Manage Users</a></li>
+                <li><a href="/admin/properties.html" class="active">🏠 Manage Properties</a></li>
+                <li><a href="/admin/inquiries.html">💬 Inquiries</a></li>
+                <li><a href="#" class="logout-btn">🚪 Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="container-fluid">
+                <h1>Manage Properties</h1>
+                
+                <div id="alertContainer"></div>
+
+                <!-- Filters -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-4">
+                                <select id="statusFilter" class="form-control">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <select id="typeFilter" class="form-control">
+                                    <option value="">All Types</option>
+                                    <option value="house">House</option>
+                                    <option value="apartment">Apartment</option>
+                                    <option value="land">Land</option>
+                                    <option value="commercial">Commercial</option>
+                                    <option value="villa">Villa</option>
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <input type="text" id="searchInput" class="form-control" placeholder="Search properties...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Properties List -->
+                <div class="card">
+                    <div class="card-body">
+                        <div id="propertiesContainer">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!Auth.requireAuth(['admin'])) throw new Error('Auth required');
+
+        let allProperties = [];
+
+        async function loadProperties() {
+            try {
+                const response = await API.request('/properties');
+                allProperties = response.data.properties;
+                displayProperties(allProperties);
+            } catch (error) {
+                Utils.showAlert('Failed to load properties', 'danger');
+            }
+        }
+
+        function displayProperties(properties) {
+            const container = document.getElementById('propertiesContainer');
+            
+            if (properties.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted">No properties found</p>';
+                return;
+            }
+
+            const table = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Title</th>
+                            <th>Agent</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${properties.map(property => `
+                            <tr>
+                                <td>
+                                    ${property.primary_image ? `
+                                        <img src="${property.primary_image.image_url}" alt="${property.title}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">
+                                    ` : `
+                                        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white;">🏠</div>
+                                    `}
+                                </td>
+                                <td>${property.title}</td>
+                                <td>${property.agent_name}</td>
+                                <td>${property.property_type}</td>
+                                <td>${Utils.formatCurrency(property.price)}</td>
+                                <td>${property.location}, ${property.city}</td>
+                                <td><span class="badge badge-${property.status === 'approved' ? 'success' : property.status === 'pending' ? 'warning' : 'danger'}">${property.status}</span></td>
+                                <td>
+                                    ${property.status === 'pending' ? `
+                                        <button onclick="updatePropertyStatus(${property.id}, 'approved')" class="btn btn-sm btn-secondary">Approve</button>
+                                        <button onclick="updatePropertyStatus(${property.id}, 'rejected')" class="btn btn-sm btn-danger">Reject</button>
+                                    ` : ''}
+                                    <button onclick="deleteProperty(${property.id})" class="btn btn-sm btn-danger">Delete</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = table;
+        }
+
+        async function updatePropertyStatus(id, status) {
+            if (!confirm(`Are you sure you want to ${status} this property?`)) return;
+            
+            try {
+                await API.request(`/properties/${id}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+                Utils.showAlert(`Property ${status} successfully`, 'success');
+                loadProperties();
+            } catch (error) {
+                Utils.showAlert('Failed to update property', 'danger');
+            }
+        }
+
+        async function deleteProperty(id) {
+            if (!confirm('Are you sure you want to delete this property?')) return;
+            
+            try {
+                await API.request(`/properties/${id}`, { method: 'DELETE' });
+                Utils.showAlert('Property deleted successfully', 'success');
+                loadProperties();
+            } catch (error) {
+                Utils.showAlert('Failed to delete property', 'danger');
+            }
+        }
+
+        // Filter functions
+        document.getElementById('statusFilter').addEventListener('change', filterProperties);
+        document.getElementById('typeFilter').addEventListener('change', filterProperties);
+        document.getElementById('searchInput').addEventListener('input', Utils.debounce(filterProperties, 300));
+
+        function filterProperties() {
+            const status = document.getElementById('statusFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            const search = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = allProperties.filter(property => {
+                const matchesStatus = !status || property.status === status;
+                const matchesType = !type || property.property_type === type;
+                const matchesSearch = !search || 
+                    property.title.toLowerCase().includes(search) ||
+                    property.location.toLowerCase().includes(search);
+                
+                return matchesStatus && matchesType && matchesSearch;
+            });
+
+            displayProperties(filtered);
+        }
+
+        loadProperties();
+    </script>
+</body>
+</html>

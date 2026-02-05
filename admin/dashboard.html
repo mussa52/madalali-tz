@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MADALALI TZ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div style="padding: 0 1.5rem; margin-bottom: 2rem;">
+                <h3 style="color: white;">Admin Panel</h3>
+                <p style="color: var(--text-light); font-size: 0.875rem;" id="adminName"></p>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li><a href="/admin/dashboard.html" class="active">📊 Dashboard</a></li>
+                <li><a href="/admin/users.html">👥 Manage Users</a></li>
+                <li><a href="/admin/properties.html">🏠 Manage Properties</a></li>
+                <li><a href="/admin/inquiries.html">💬 Inquiries</a></li>
+                <li><a href="#" class="logout-btn">🚪 Logout</a></li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container-fluid">
+                <h1>Dashboard Overview</h1>
+                <p class="text-muted">Welcome to your admin dashboard</p>
+
+                <div id="alertContainer"></div>
+
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">👥</div>
+                        <div class="stat-info">
+                            <h3 id="totalUsers">0</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon success">🏠</div>
+                        <div class="stat-info">
+                            <h3 id="totalProperties">0</h3>
+                            <p>Total Properties</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon danger">⏳</div>
+                        <div class="stat-info">
+                            <h3 id="pendingProperties">0</h3>
+                            <p>Pending Approval</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon primary">💬</div>
+                        <div class="stat-info">
+                            <h3 id="totalInquiries">0</h3>
+                            <p>Total Inquiries</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Properties -->
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title">Recent Properties</h3>
+                        <a href="/admin/properties.html" class="btn btn-sm btn-primary">View All</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="propertiesTableContainer">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Users -->
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 class="card-title">Recent Users</h3>
+                        <a href="/admin/users.html" class="btn btn-sm btn-primary">View All</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="usersTableContainer">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Require authentication (admin only)
+        if (!Auth.requireAuth(['admin'])) {
+            throw new Error('Authentication required');
+        }
+
+        const user = Auth.getUser();
+        document.getElementById('adminName').textContent = user.user.name;
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // Load statistics
+                const [usersResponse, propertiesResponse, inquiriesResponse] = await Promise.all([
+                    API.request('/users'),
+                    API.request('/properties'),
+                    API.request('/inquiries')
+                ]);
+
+                // Update statistics
+                document.getElementById('totalUsers').textContent = usersResponse.data.count;
+                document.getElementById('totalProperties').textContent = propertiesResponse.data.count;
+                
+                const pendingProperties = propertiesResponse.data.properties.filter(p => p.status === 'pending');
+                document.getElementById('pendingProperties').textContent = pendingProperties.length;
+                
+                document.getElementById('totalInquiries').textContent = inquiriesResponse.data.count;
+
+                // Display recent properties
+                displayProperties(propertiesResponse.data.properties.slice(0, 5));
+                
+                // Display recent users
+                displayUsers(usersResponse.data.users.slice(0, 5));
+
+            } catch (error) {
+                Utils.showAlert('Failed to load dashboard data', 'danger');
+                console.error(error);
+            }
+        }
+
+        function displayProperties(properties) {
+            const container = document.getElementById('propertiesTableContainer');
+            
+            if (properties.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No properties found</p>';
+                return;
+            }
+
+            const table = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Agent</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${properties.map(property => `
+                            <tr>
+                                <td>${property.title}</td>
+                                <td>${property.property_type}</td>
+                                <td>${Utils.formatCurrency(property.price)}</td>
+                                <td>${property.agent_name}</td>
+                                <td><span class="badge badge-${property.status === 'approved' ? 'success' : property.status === 'pending' ? 'warning' : 'danger'}">${property.status}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = table;
+        }
+
+        function displayUsers(users) {
+            const container = document.getElementById('usersTableContainer');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<p class="text-muted text-center">No users found</p>';
+                return;
+            }
+
+            const table = `
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map(user => `
+                            <tr>
+                                <td>${user.name}</td>
+                                <td>${user.email}</td>
+                                <td><span class="badge badge-info">${user.role}</span></td>
+                                <td><span class="badge badge-${user.status === 'active' ? 'success' : 'danger'}">${user.status}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = table;
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
