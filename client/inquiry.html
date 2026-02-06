@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Inquiry - MADALALI TZ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">MADALALI TZ</a>
+            <ul class="navbar-menu">
+                <li><a href="/index.html">Home</a></li>
+                <li><a href="/client/properties.html">Properties</a></li>
+                <li><a href="/client/dashboard.html">Dashboard</a></li>
+                <li><a href="#" class="logout-btn">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section style="padding: 3rem 0; min-height: calc(100vh - 200px);">
+        <div class="container">
+            <div class="row justify-center">
+                <div class="col" style="max-width: 600px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Send Inquiry</h2>
+                            <p class="text-muted" id="propertyTitle">Loading property details...</p>
+                        </div>
+                        
+                        <div class="card-body">
+                            <div id="alertContainer"></div>
+                            
+                            <form id="inquiryForm">
+                                <div class="form-group">
+                                    <label class="form-label">Property</label>
+                                    <div id="propertyInfo" style="padding: 1rem; background: var(--light-bg); border-radius: 6px; margin-bottom: 1rem;">
+                                        <div class="spinner"></div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="subject" class="form-label">Subject *</label>
+                                    <input 
+                                        type="text" 
+                                        id="subject" 
+                                        name="subject" 
+                                        class="form-control" 
+                                        placeholder="e.g., Interested in viewing this property"
+                                        required
+                                    >
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="message" class="form-label">Message *</label>
+                                    <textarea 
+                                        id="message" 
+                                        name="message" 
+                                        class="form-control" 
+                                        rows="5"
+                                        placeholder="Enter your message to the agent..."
+                                        required
+                                    ></textarea>
+                                    <span class="form-error"></span>
+                                </div>
+
+                                <button type="submit" id="submitBtn" class="btn btn-primary w-100">
+                                    Send Inquiry
+                                </button>
+                                <a href="/client/properties.html" class="btn btn-outline w-100" style="margin-top: 0.5rem;">
+                                    Cancel
+                                </a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!Auth.requireAuth(['client'])) {
+            throw new Error('Authentication required');
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const propertyId = urlParams.get('property');
+
+        if (!propertyId) {
+            Utils.showAlert('No property selected', 'danger');
+            setTimeout(() => window.location.href = '/client/properties.html', 2000);
+        }
+
+        let propertyData = null;
+
+        // Load property details
+        async function loadProperty() {
+            try {
+                const response = await API.request(`/properties/${propertyId}`);
+                propertyData = response.data.property;
+                
+                document.getElementById('propertyTitle').textContent = propertyData.title;
+                
+                document.getElementById('propertyInfo').innerHTML = `
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        ${propertyData.primary_image ? `
+                            <img src="${propertyData.primary_image.image_url}" alt="${propertyData.title}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px;">
+                        ` : `
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem;">🏠</div>
+                        `}
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.5rem 0;">${propertyData.title}</h4>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.875rem;">📍 ${propertyData.location}, ${propertyData.city}</p>
+                            <p style="margin: 0.25rem 0 0 0; font-weight: bold; color: var(--primary-color);">${Utils.formatCurrency(propertyData.price)}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        <p style="margin: 0; font-size: 0.875rem;"><strong>Agent:</strong> ${propertyData.agent_name}</p>
+                        <p style="margin: 0; font-size: 0.875rem;"><strong>Email:</strong> ${propertyData.agent_email}</p>
+                    </div>
+                `;
+            } catch (error) {
+                Utils.showAlert('Failed to load property details', 'danger');
+                console.error(error);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('inquiryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!Utils.validateForm('inquiryForm')) {
+                return;
+            }
+
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value;
+
+            Utils.setLoading('submitBtn', true);
+
+            try {
+                const response = await API.request('/inquiries', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        property_id: propertyId,
+                        subject: subject,
+                        message: message
+                    })
+                });
+
+                Utils.showAlert('Inquiry sent successfully! The agent will contact you soon.', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/client/dashboard.html';
+                }, 2000);
+            } catch (error) {
+                Utils.showAlert(error.message || 'Failed to send inquiry', 'danger');
+                Utils.setLoading('submitBtn', false);
+            }
+        });
+
+        // Load property on page load
+        loadProperty();
+
+        // Clear error on input
+        document.querySelectorAll('.form-control').forEach(input => {
+            input.addEventListener('input', () => {
+                input.classList.remove('error');
+                const errorElement = input.nextElementSibling;
+                if (errorElement && errorElement.classList.contains('form-error')) {
+                    errorElement.classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

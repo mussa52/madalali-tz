@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Properties - MADALALI TZ</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="navbar-brand">MADALALI TZ</a>
+            <ul class="navbar-menu" id="navMenu">
+                <li><a href="/index.html">Home</a></li>
+                <li><a href="/client/properties.html" class="active">Properties</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section style="padding: 3rem 0;">
+        <div class="container">
+            <h1>Browse Properties</h1>
+            <p class="text-muted">Find your perfect property</p>
+
+            <div id="alertContainer"></div>
+
+            <!-- Filters -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="row" style="gap: 1rem;">
+                        <div class="col-3">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Search...">
+                        </div>
+                        <div class="col-3">
+                            <select id="typeFilter" class="form-control">
+                                <option value="">All Types</option>
+                                <option value="house">House</option>
+                                <option value="apartment">Apartment</option>
+                                <option value="land">Land</option>
+                                <option value="commercial">Commercial</option>
+                                <option value="villa">Villa</option>
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <select id="listingTypeFilter" class="form-control">
+                                <option value="">Sale & Rent</option>
+                                <option value="sale">For Sale</option>
+                                <option value="rent">For Rent</option>
+                            </select>
+                        </div>
+                        <div class="col-3">
+                            <input type="text" id="cityFilter" class="form-control" placeholder="City">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Properties Grid -->
+            <div id="propertiesContainer">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Property Details Modal -->
+    <div id="propertyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Property Details</h3>
+                <button class="modal-close" onclick="Utils.hideModal('propertyModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Property details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="Utils.hideModal('propertyModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Update nav menu based on auth status
+        const user = Auth.getUser();
+        const navMenu = document.getElementById('navMenu');
+        
+        if (user) {
+            navMenu.innerHTML += `
+                <li><a href="/${user.user.role}/dashboard.html">Dashboard</a></li>
+                <li><a href="#" class="logout-btn">Logout</a></li>
+            `;
+        } else {
+            navMenu.innerHTML += `
+                <li><a href="/login.html">Login</a></li>
+                <li><a href="/register.html" class="btn btn-primary btn-sm">Register</a></li>
+            `;
+        }
+
+        let allProperties = [];
+
+        async function loadProperties() {
+            try {
+                console.log('Loading properties...');
+                const response = await API.request('/properties?status=approved');
+                console.log('Properties response:', response);
+                console.log('Total properties received:', response.data.properties.length);
+                allProperties = response.data.properties;
+                displayProperties(allProperties);
+            } catch (error) {
+                console.error('Failed to load properties:', error);
+                Utils.showAlert('Failed to load properties', 'danger');
+            }
+        }
+
+        function displayProperties(properties) {
+            const container = document.getElementById('propertiesContainer');
+            
+            console.log('Displaying properties:', properties.length);
+            
+            if (properties.length === 0) {
+                container.innerHTML = '<div class="card"><p class="text-center text-muted">No properties found</p></div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="row" style="gap: 1.5rem; margin-top: 2rem;">
+                    ${properties.map(property => `
+                        <div class="col-4" style="min-width: 300px;">
+                            <div class="card" style="cursor: pointer;" onclick="showPropertyDetails(${property.id})">
+                                ${property.primary_image ? `
+                                    <img src="${property.primary_image.image_url}" alt="${property.title}" style="width: 100%; height: 200px; object-fit: cover; border-radius: 6px 6px 0 0;">
+                                ` : `
+                                    <div style="height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 6px 6px 0 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 3rem;">🏠</div>
+                                `}
+                                <div class="card-body">
+                                    <h4>${property.title}</h4>
+                                    <p class="text-muted" style="font-size: 0.875rem; margin: 0.5rem 0;">
+                                        📍 ${property.location}, ${property.city}
+                                    </p>
+                                    <p class="text-primary" style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0;">
+                                        ${Utils.formatCurrency(property.price)}
+                                    </p>
+                                    <div style="display: flex; gap: 1rem; margin: 1rem 0;">
+                                        ${property.bedrooms ? `<span>🛏️ ${property.bedrooms} bed</span>` : ''}
+                                        ${property.bathrooms ? `<span>🚿 ${property.bathrooms} bath</span>` : ''}
+                                        ${property.area_sqm ? `<span>📐 ${property.area_sqm} m²</span>` : ''}
+                                    </div>
+                                    <span class="badge badge-info">${property.property_type}</span>
+                                    <span class="badge badge-secondary">${property.listing_type}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function showPropertyDetails(id) {
+            try {
+                const response = await API.request(`/properties/${id}`);
+                const property = response.data.property;
+
+                document.getElementById('modalTitle').textContent = property.title;
+                document.getElementById('modalBody').innerHTML = `
+                    ${property.images && property.images.length > 0 ? `
+                        <div style="margin-bottom: 1rem;">
+                            <img src="${property.images[0].image_url}" alt="${property.title}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 6px;">
+                        </div>
+                    ` : `
+                        <div style="margin-bottom: 1rem;">
+                            <div style="height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem;">🏠</div>
+                        </div>
+                    `}
+                    
+                    <h3 style="color: var(--primary-color); margin: 1rem 0;">
+                        ${Utils.formatCurrency(property.price)}
+                    </h3>
+                    
+                    <p><strong>Location:</strong> ${property.location}, ${property.city}</p>
+                    ${property.address ? `<p><strong>Address:</strong> ${property.address}</p>` : ''}
+                    
+                    <p><strong>Type:</strong> ${property.property_type} | <strong>Listing:</strong> ${property.listing_type}</p>
+                    
+                    <div style="display: flex; gap: 2rem; margin: 1rem 0; padding: 1rem; background: var(--light-bg); border-radius: 6px;">
+                        ${property.bedrooms ? `<div><strong>Bedrooms:</strong> ${property.bedrooms}</div>` : ''}
+                        ${property.bathrooms ? `<div><strong>Bathrooms:</strong> ${property.bathrooms}</div>` : ''}
+                        ${property.area_sqm ? `<div><strong>Area:</strong> ${property.area_sqm} m²</div>` : ''}
+                        ${property.parking_spaces ? `<div><strong>Parking:</strong> ${property.parking_spaces}</div>` : ''}
+                    </div>
+                    
+                    <h4>Description</h4>
+                    <p>${property.description}</p>
+                    
+                    <h4>Agent Information</h4>
+                    <p><strong>Name:</strong> ${property.agent_name}</p>
+                    <p><strong>Email:</strong> ${property.agent_email}</p>
+                    ${property.agent_phone ? `<p><strong>Phone:</strong> ${property.agent_phone}</p>` : ''}
+                    
+                    ${user && user.user.role === 'client' ? `
+                        <button class="btn btn-primary w-100" onclick="sendInquiry(${property.id})">
+                            Send Inquiry
+                        </button>
+                    ` : ''}
+                `;
+
+                Utils.showModal('propertyModal');
+            } catch (error) {
+                Utils.showAlert('Failed to load property details', 'danger');
+            }
+        }
+
+        function sendInquiry(propertyId) {
+            if (!user) {
+                Utils.showAlert('Please login to send inquiries', 'warning');
+                setTimeout(() => window.location.href = '/login.html', 1500);
+                return;
+            }
+            window.location.href = `/client/inquiry.html?property=${propertyId}`;
+        }
+
+        // Filters
+        document.getElementById('searchInput').addEventListener('input', Utils.debounce(filterProperties, 300));
+        document.getElementById('typeFilter').addEventListener('change', filterProperties);
+        document.getElementById('listingTypeFilter').addEventListener('change', filterProperties);
+        document.getElementById('cityFilter').addEventListener('input', Utils.debounce(filterProperties, 300));
+
+        function filterProperties() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const listingType = document.getElementById('listingTypeFilter').value;
+            const city = document.getElementById('cityFilter').value.toLowerCase();
+
+            const filtered = allProperties.filter(property => {
+                const matchesSearch = !search || 
+                    property.title.toLowerCase().includes(search) ||
+                    property.description.toLowerCase().includes(search);
+                const matchesType = !type || property.property_type === type;
+                const matchesListingType = !listingType || property.listing_type === listingType;
+                const matchesCity = !city || property.city.toLowerCase().includes(city);
+                
+                return matchesSearch && matchesType && matchesListingType && matchesCity;
+            });
+
+            displayProperties(filtered);
+        }
+
+        loadProperties();
+    </script>
+</body>
+</html>
