@@ -1,5 +1,6 @@
 // API Configuration and Utility Functions
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'https://madalali-tz-production.up.railway.app/api';
+
 
 // Storage helper functions
 const Storage = {
