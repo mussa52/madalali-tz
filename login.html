@@ -80,129 +80,97 @@
         </div>
     </section>
 
-    <script src="/js/app.js"></script>
     <script>
-        // Test if JavaScript is working
-        console.log('✅ JavaScript loaded successfully');
-        console.log('✅ app.js loaded, Auth object:', typeof Auth);
-        console.log('✅ Utils object:', typeof Utils);
-        console.log('✅ API object:', typeof API);
-        
-        // Check if already logged in (but don't auto-redirect)
-        const currentUser = Auth.getUser();
-        console.log('Current user:', currentUser);
-        
-        if (currentUser) {
-            console.log('⚠️ User already logged in:', currentUser);
-            Utils.showAlert('You are already logged in. Redirecting...', 'info');
-            setTimeout(() => {
-                Auth.redirectToDashboard(currentUser.user.role);
-            }, 2000);
-        } else {
-            console.log('✅ No user logged in, ready for login');
-        }
+        // Use correct Railway production URL
+        const API_BASE_URL = 'https://madalali-tz-production.up.railway.app';
 
-        // Handle login form submission
-        const loginForm = document.getElementById('loginForm');
-        console.log('✅ Login form found:', loginForm);
-        
-        if (!loginForm) {
-            console.error('❌ ERROR: Login form not found!');
-            alert('ERROR: Login form not found!');
-        }
-        
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            console.log('🔐 Login form submitted');
-            
-            // Validate form
-            if (!Utils.validateForm('loginForm')) {
-                console.warn('⚠️ Form validation failed');
-                return;
+        // Storage helper
+        const Storage = {
+            set: (k,v) => localStorage.setItem(k, JSON.stringify(v)),
+            get: k => JSON.parse(localStorage.getItem(k) || 'null'),
+            remove: k => localStorage.removeItem(k),
+            clear: () => localStorage.clear()
+        };
+
+        const Utils = {
+            showAlert: (msg, type='info') => {
+                const container = document.getElementById('alertContainer');
+                if (!container) return;
+                container.innerHTML = `<div class="alert alert-${type} show">${msg}</div>`;
+            },
+            validateForm: (formId) => {
+                const form = document.getElementById(formId);
+                if (!form) return false;
+                let valid = true;
+                form.querySelectorAll('.form-control').forEach(input => {
+                    input.classList.remove('error');
+                    const err = input.nextElementSibling;
+                    if (err && err.classList.contains('form-error')) err.classList.remove('show');
+
+                    if (input.hasAttribute('required') && !input.value.trim()) {
+                        valid = false;
+                        input.classList.add('error');
+                        if (err) { err.textContent = 'This field is required'; err.classList.add('show'); }
+                    }
+                });
+                return valid;
+            },
+            setLoading: (btnId, loading) => {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                if (loading) { btn.disabled = true; btn.dataset.originalText = btn.textContent; btn.textContent='Loading...'; }
+                else { btn.disabled=false; btn.textContent = btn.dataset.originalText || btn.textContent; }
             }
-            
-            // Get form data
+        };
+
+        const Auth = {
+            getUser: () => Storage.get('user'),
+            setUser: (data) => Storage.set('user', data),
+            redirectToDashboard: (role) => {
+                const dashboards = {admin:'/admin/dashboard.html', agent:'/agent/dashboard.html', client:'/client/dashboard.html'};
+                window.location.href = dashboards[role] || '/index.html';
+            }
+        };
+
+        document.getElementById('loginForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            if (!Utils.validateForm('loginForm')) return;
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
-            console.log('📧 Email:', email);
-            console.log('🔑 Password length:', password.length);
-            
-            // Set loading state
+
             Utils.setLoading('loginBtn', true);
-            
+            Utils.showAlert('Logging in...', 'info');
+
             try {
-                console.log('🚀 Sending login request...');
-                const response = await API.request('/auth/login', {
+                const res = await fetch(`${API_BASE_URL}/auth/login`, {
                     method: 'POST',
-                    body: JSON.stringify({ email, password })
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({email, password})
                 });
-                
-                console.log('✅ Login response received:', response);
-                
-                if (response && response.success) {
-                    console.log('👤 User:', response.data.user);
-                    console.log('🎯 Role:', response.data.user.role);
-                    
-                    // Save user data to localStorage
-                    Utils.Storage.set('user', response.data);
-                    console.log('💾 User data saved to localStorage');
-                    
-                    // Show success message
-                    Utils.showAlert('Login successful! Redirecting...', 'success');
-                    
-                    // Redirect to appropriate dashboard
-                    const dashboardUrl = response.data.user.role === 'admin' ? '/admin/dashboard.html' : 
-                                       response.data.user.role === 'agent' ? '/agent/dashboard.html' : 
-                                       '/client/dashboard.html';
-                    console.log('🔄 Redirecting to:', dashboardUrl);
-                    
-                    setTimeout(() => {
-                        Auth.redirectToDashboard(response.data.user.role);
-                    }, 1500);
-                } else {
-                    console.error('❌ Login failed: response.success is false');
-                    Utils.Storage.remove('user'); // Clear any previous user data
-                    Utils.showAlert('Login failed. Please check your credentials.', 'danger');
-                    Utils.setLoading('loginBtn', false);
-                }
-            } catch (error) {
-                console.error('❌ Login error caught:', error);
-                console.error('Error message:', error.message);
-                console.error('Error stack:', error.stack);
-                
-                // Show error and keep it visible
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-danger show';
-                alertDiv.style.marginBottom = '1rem';
-                alertDiv.innerHTML = `
-                    <strong>Login Failed!</strong><br>
-                    ${error.message || 'Unable to login. Please try again.'}<br>
-                    <small>Check the console (F12) for more details.</small>
-                `;
-                
-                const alertContainer = document.getElementById('alertContainer');
-                alertContainer.innerHTML = '';
-                alertContainer.appendChild(alertDiv);
-                
+
+                if (res.status === 405) throw new Error('Method Not Allowed. Check backend route.');
+
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.message || 'Login failed');
+
+                Auth.setUser(data);
+                Utils.showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(()=>Auth.redirectToDashboard(data.user.role), 1500);
+
+            } catch(err) {
+                console.error(err);
+                Utils.showAlert(`Login failed: ${err.message}`, 'danger');
+            } finally {
                 Utils.setLoading('loginBtn', false);
-                
-                // Don't auto-hide this error
-                console.error('🛑 ERROR DISPLAYED - Check above for details');
             }
         });
 
-        // Clear error on input
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.addEventListener('input', () => {
-                input.classList.remove('error');
-                const errorElement = input.nextElementSibling;
-                if (errorElement && errorElement.classList.contains('form-error')) {
-                    errorElement.classList.remove('show');
-                }
-            });
-        });
+        // Redirect if already logged in
+        const currentUser = Auth.getUser();
+        if (currentUser) setTimeout(()=>Auth.redirectToDashboard(currentUser.user.role), 1000);
+
     </script>
 </body>
 </html>
