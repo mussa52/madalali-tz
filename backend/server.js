@@ -13,8 +13,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve static files from root directory (HTML, CSS, JS, assets)
+app.use(express.static(path.join(__dirname, '..')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -30,7 +31,7 @@ app.use('/api/inquiries', inquiryRoutes);
 
 // Root route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(path.join(__dirname, '../index.html'));
 });
 
 // 404 handler
@@ -52,8 +53,11 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ MADALALI TZ Server running on port ${PORT}`);
-    console.log(`🌐 Frontend: http://localhost:${PORT}`);
-    console.log(`📡 API: http://localhost:${PORT}/api`);
+    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` 
+        : `http://localhost:${PORT}`;
+    console.log(`🌐 Frontend: ${baseUrl}`);
+    console.log(`📡 API: ${baseUrl}/api`);
 });
 
 // DEBUG: Print JWT secret to verify .env loading

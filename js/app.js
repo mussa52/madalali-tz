@@ -98,7 +98,7 @@ async function apiRequest(endpoint, options = {}) {
         
         // Check if server is unreachable
         if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-            throw new Error('Cannot connect to server. Please make sure the backend server is running on http://localhost:3000');
+            throw new Error(`Cannot connect to server at ${API_BASE_URL}. Please check if the backend server is running.`);
         }
         
         throw error;
