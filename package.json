@@ -1,0 +1,15 @@
+{
+  "name": "madalali-tz",
+  "version": "1.0.0",
+  "description": "MADALALI TZ Real Estate Management System",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "cd backend && npx nodemon server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["real-estate", "property-management", "nodejs", "express", "mysql"],
+  "license": "MIT"
+}

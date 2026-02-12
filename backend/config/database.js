@@ -1,17 +1,31 @@
 // Database Configuration
 const mysql = require('mysql2');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
+// Build connection config - support Railway's MYSQL_URL or individual env vars
+const connectionUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+
+const poolConfig = connectionUrl
+    ? {
+        uri: connectionUrl,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    }
+    : {
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 3306,
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || 'madalali_tz',
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0
+    };
 
 // Create connection pool for better performance
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'madalali_tz',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const pool = mysql.createPool(poolConfig);
 
 // Promisify for async/await usage
 const promisePool = pool.promise();

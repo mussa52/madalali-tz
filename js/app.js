@@ -1,5 +1,5 @@
 // API Configuration and Utility Functions
-const API_BASE_URL = 'https://madalali-tz-production.up.railway.app/api';
+const API_BASE_URL = window.location.origin + '/api';
 
 
 // Storage helper functions

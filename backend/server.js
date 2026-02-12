@@ -4,7 +4,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 
@@ -13,8 +13,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from frontend
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve static frontend files (specific directories and root-level files)
+app.use('/css', express.static(path.join(__dirname, '../css')));
+app.use('/js', express.static(path.join(__dirname, '../js')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/admin', express.static(path.join(__dirname, '../admin')));
+app.use('/agent', express.static(path.join(__dirname, '../agent')));
+app.use('/client', express.static(path.join(__dirname, '../client')));
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -30,7 +35,20 @@ app.use('/api/inquiries', inquiryRoutes);
 
 // Root route
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
+
+// Serve root-level HTML pages
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
+
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../login.html'));
+});
+
+app.get('/register.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../register.html'));
 });
 
 // 404 handler
@@ -55,8 +73,5 @@ app.listen(PORT, () => {
     console.log(`🌐 Frontend: http://localhost:${PORT}`);
     console.log(`📡 API: http://localhost:${PORT}/api`);
 });
-
-// DEBUG: Print JWT secret to verify .env loading
-console.log('DEBUG: JWT_SECRET from .env =', process.env.JWT_SECRET);
 
 module.exports = app;
