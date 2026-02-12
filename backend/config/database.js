@@ -5,7 +5,7 @@ require('dotenv').config();
 // Create connection pool for better performance
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
+    port: process.env.DATABASE_PORT || process.env.DB_PORT || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'madalali_tz',
@@ -40,9 +40,9 @@ pool.getConnection((err, connection) => {
         console.error('   Host:', process.env.DB_HOST || 'localhost');
         console.error('   User:', process.env.DB_USER || 'root');
         console.error('   Database:', process.env.DB_NAME || 'madalali_tz');
-        console.error('   Port:', process.env.DB_PORT || '3306');
+        console.error('   Port:', process.env.DATABASE_PORT || process.env.DB_PORT || '3306');
         console.error('\n💡 For Railway deployment, ensure these environment variables are set:');
-        console.error('   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT');
+        console.error('   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DATABASE_PORT');
         return;
     }
     console.log('✅ Database connected successfully');
