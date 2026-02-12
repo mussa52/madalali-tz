@@ -157,7 +157,7 @@
 
                 Auth.setUser(data);
                 Utils.showAlert('Login successful! Redirecting...', 'success');
-                setTimeout(()=>Auth.redirectToDashboard(data.user.role), 1500);
+                setTimeout(()=>Auth.redirectToDashboard(data.data.user.role), 1500);
 
             } catch(err) {
                 console.error(err);
@@ -169,7 +169,9 @@
 
         // Redirect if already logged in
         const currentUser = Auth.getUser();
-        if (currentUser) setTimeout(()=>Auth.redirectToDashboard(currentUser.user.role), 1000);
+        if (currentUser && currentUser.data && currentUser.data.user) {
+            setTimeout(()=>Auth.redirectToDashboard(currentUser.data.user.role), 1000);
+        }
 
     </script>
 </body>
