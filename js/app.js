@@ -339,3 +339,87 @@ document.querySelectorAll('.logout-btn').forEach(btn => {
         logout();
     });
 });
+
+// Mobile Menu Toggle
+function initializeMobileMenu() {
+    // Create mobile toggle button if navbar exists and toggle doesn't exist
+    const navbar = document.querySelector('.navbar .container');
+    if (navbar && !document.querySelector('.navbar-toggle')) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'navbar-toggle';
+        toggleBtn.innerHTML = '☰';
+        toggleBtn.setAttribute('aria-label', 'Toggle navigation');
+        
+        const menu = document.querySelector('.navbar-menu');
+        const brand = document.querySelector('.navbar-brand');
+        
+        if (brand && menu) {
+            brand.parentNode.insertBefore(toggleBtn, menu);
+            
+            // Toggle menu on button click
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('active');
+                toggleBtn.innerHTML = menu.classList.contains('active') ? '✕' : '☰';
+            });
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!navbar.contains(e.target) && menu.classList.contains('active')) {
+                    menu.classList.remove('active');
+                    toggleBtn.innerHTML = '☰';
+                }
+            });
+            
+            // Close menu when clicking on a link
+            menu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        menu.classList.remove('active');
+                        toggleBtn.innerHTML = '☰';
+                    }
+                });
+            });
+        }
+    }
+    
+    // Dashboard sidebar toggle
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (sidebar && mainContent && window.innerWidth <= 768) {
+        // Create sidebar toggle if it doesn't exist
+        if (!document.querySelector('.sidebar-toggle')) {
+            const sidebarToggle = document.createElement('button');
+            sidebarToggle.className = 'btn btn-primary sidebar-toggle';
+            sidebarToggle.innerHTML = '☰ Menu';
+            sidebarToggle.style.cssText = 'position: fixed; top: 75px; left: 10px; z-index: 1000;';
+            
+            document.body.appendChild(sidebarToggle);
+            
+            sidebarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('active');
+            });
+            
+            // Close sidebar when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target) && sidebar.classList.contains('active')) {
+                    sidebar.classList.remove('active');
+                }
+            });
+        }
+    }
+}
+
+// Initialize mobile menu on page load
+document.addEventListener('DOMContentLoaded', initializeMobileMenu);
+
+// Re-initialize on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        initializeMobileMenu();
+    }, 250);
+});
