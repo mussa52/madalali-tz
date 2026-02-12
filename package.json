@@ -4,6 +4,7 @@
   "description": "MADALALI TZ Real Estate Management System",
   "main": "backend/server.js",
   "scripts": {
+    "postinstall": "cd backend && npm install",
     "start": "node backend/server.js",
     "dev": "cd backend && npx nodemon server.js"
   },
